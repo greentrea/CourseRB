@@ -1,0 +1,56 @@
+---
+title: "2024_UZH_RBridge"
+author: "Stefan Graf & Saskia Stierli"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Script description
+This is an R Markdown for the workshop "Linking R with Web Mapping: The R-ArcGIS Bridge" at the Unviersity of Zurich.
+
+```{r cars}
+summary(cars)
+```
+## Setup R for workshop
+Setting up your R environment.
+
+```{r pressure, echo=FALSE}
+# CLASSICAL PACKAGE IMPORTERs
+packages_checker <- function(packages_list){
+  for (package in packages_list){
+    if (!require(package, character.only = T)) {
+      install.packages(package)
+    }
+    library(package, character.only = T)
+  }
+}
+packages_checker(
+  c('dplyr'))
+
+# Clean environment
+rm(list = ls())
+
+# See working directory
+getwd()
+
+```
+
+## Testing out (Demo)
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(Test)
+```
+
+## Exercises
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(Test)
+```
