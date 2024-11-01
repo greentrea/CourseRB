@@ -1,5 +1,5 @@
 ---
-title: "2024_UZH_RBridge"
+title: "2024 UZH R-Bridge Workshop"
 author: "Stefan Graf & Saskia Stierli"
 date: "`r Sys.Date()`"
 output: html_document
@@ -12,14 +12,21 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Script description
 This is an R Markdown for the workshop "Linking R with Web Mapping: The R-ArcGIS Bridge" at the Unviersity of Zurich.
 
-```{r cars}
-summary(cars)
+```{r summary}
+#Link of a final dashboard
 ```
 ## Setup R for workshop
 Setting up your R environment.
 
-```{r pressure, echo=FALSE}
+```{r Setup, echo=FALSE}
 # CLASSICAL PACKAGE IMPORTERs
+
+# install.packages(
+#   "arcgisbinding", 
+#   repos = "https://r.esri.com", 
+#   type = "win.binary"
+#  )
+
 packages_checker <- function(packages_list){
   for (package in packages_list){
     if (!require(package, character.only = T)) {
@@ -29,28 +36,273 @@ packages_checker <- function(packages_list){
   }
 }
 packages_checker(
-  c('dplyr'))
+  c('dplyr',
+    'arcgis',
+    'arcgisbinding',
+    'sf',
+    'ggplot2',
+    'GGally',
+    'tidyverse',
+    'fuzzyjoin',
+    'jsonlite'    
+    #'cli' # last week something didnt work with progress bars
+    ))
 
-# Clean environment
-rm(list = ls())
+# Clean environment if necessary
+# rm(list = ls())
+
+renv::restore()
 
 # See working directory
 getwd()
 
+# Usefull shortcuts on windows
+# set variable [alt+-]
+# piping [ctrl+shift+m]
+# format code [ctrl+l]
+# uncomment or comment code [ctrl+shift+c]
+
+
+
 ```
 
-## Testing out (Demo)
+## An example of how to use the ArcGIS Bridge (Demo)
+### Demo access public living atlas data
 
-You can also embed plots, for example:
+You can load public services from the living atlas without licensing or use any ArcGIS License. Feature layers will be read in as [sf](https://r-spatial.github.io/sf/) object. See the [living atlas](https://livingatlas.arcgis.com/en/home/) of Esri for "official" datasets hosted by Esri or just search [ArcGIS Online (Sign in)](https://www.arcgis.com/home/) for any publicly available dataset. :
 
-```{r pressure, echo=FALSE}
-plot(Test)
+```{r Demo access public living atlas data, echo=FALSE}
+# Save url of Service
+accidents_url <- 'https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Polizeilich_registrierte_Verkehrsunfälle_im_Kanton_Zürich_seit_2011/FeatureServer/0' # feature service of all traffic accidents of the canton of Zurich.
+
+# Connect to feature service
+accidents_featurelayer <- arc_open(accidents_url) # meta data appears in R environment data as a list
+# Add optionally a filter with arc_open(layername, where = "AccidentSevirety='fatal'")
+
+# Create a SF object from feature service
+accidents_featurelayer_sf <- arc_select(accidents_featurelayer)
+
+# Plot traffic accidents by severity
+ggplot(data = accidents_featurelayer_sf) +
+  geom_sf(aes(color = AccidentSeverityCategory), size = 0.5, alpha = 0.6) +
+  scale_color_viridis_d(option = "C", end = 0.8) + # Option C provides a varied color scale for severity
+  labs(
+    title = "Traffic Accidents by Severity in the Canton of Zurich",
+    color = "Severity Category"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# #Or load a huge dataset ;) just takes 12h (1 Mio is ok but if its above it gets slow like this 100 Mio Dataset)
+# iNaturalist_url <- 'https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/iNat_PreUC_View/FeatureServer/0' # feature service of all traffic accidents of the canton of Zurich.
+# iNaturalist_fl <- arc_open(iNaturalist_url) # meta data appears in R environment data as a list
+# iNaturalist_sf <- arc_select(iNaturalist_fl,
+#                              where = "scientific_name ='pongo abelii'") # Filter f.e. for Orangutans
+
 ```
+### Demo access private data of your account or publish data in your account (ArcGIS Online or ArcGIS Enterprise)
+
+
+```{r Demo access private data, echo=FALSE}
+## Access private data of my ArcGIS Account
+# Save url of Service
+sruveyresults_url <- 'https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/survey123_111a8cddbd3c494bb25b685d6984631f_results/FeatureServer/0'
+
+# Connect to feature service 
+sruveyresults_fl <- arc_open(sruveyresults_url) # --> We cant connect as this data is private of my account! We first have to authorize R to access.
+
+
+```
+
+#### Authorization Process to connect R to my ArcGIS Account (hold your ArcGIS Login ready)
+There a number of times when you will need to verify who you say you are when using ArcGIS location services. This is done through a process called authentication. Authentication is required when you want to:
+
+*access private content
+*publish your own layers
+*use services like geocode addresses in bulk from an ArcGIS client service
+*store geocoding results in a file
+*or access POI data through {arcgisplaces}
+
+If you want to use R within ArcGIS Pro see the arcgisbinding package authorization [here](https://r.esri.com/r-bridge-site/docs/installation.html)
+
+
+#### Now a short tricky bit! ;). - Our Authentication process
+There are some options to "login" or authenticate ArcGIS online. Originally there were just functions to put in your password and credentials. After years some standards were established and we will for this course now use the following:
+The code flow-based authentication in ArcGIS for R uses OAuth2. When you run auth_code(), a browser tab opens, prompting you to sign in and copy an authorization code. Paste this code back into R to generate a temporary access token, allowing the application to interact with your account securely. This token expires periodically, so you’ll need to renew it as needed. For further details, you can view the full guide here (https://r.esri.com/r-bridge-site/docs/auth/connecting-to-a-portal.html).
+
+#### 
+If a client ID is not provided to you by an administrator and you have the ability to create content items, you can create one.
+
+You can do so by creating an application item.
+
+*Log in to your ArcGIS Online or ArcGIS Enterprise organization
+*Navigate to the Content tab
+*Click New Item
+*Select Application
+*Choose Other application as your Application Type
+*Give the item an informative name such as r-arcgis
+*Optionally, specify the folder, tags, and summary as well.
+*You will be directed to the item details page of the newly created application where you can see your credentials. Do not share these.
+
+```{r Authorization, echo=FALSE}
+
+# Obtaining a Client ID
+# Please follow these steps see above https://r.esri.com/r-bridge-site/docs/auth/connecting-to-a-portal.html#obtaining-a-client-id
+
+# Authorization there are different methods all a bit complicated! I choose the easiest way. Please run the below seperately and login in the opening browser.
+Sys.setenv(ARCGIS_CLIENT = "qhmvug4Qc984TWRV") #Use your own Client ID
+token <- auth_code() # Allow in browser and enter token in console!
+set_arc_token(token) # set token for all future environment functions (but if you get strange error messages while opening private feature layer --> add token manually to function)
+
+```
+#### Demo - Reading private vector or image layers (types of AGOL layers)
+
+```{r reading private, echo=FALSE}
+# Load survey results from my private survey with you
+survey_url <- "https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/survey123_a26158c869224447903aa8dad3029715_results/FeatureServer/0"
+
+
+# Read in as a reference layer
+survey_fl <- arc_open(survey_url) # token needed if not public layer
+
+# Read in as SF object
+survey_sf <- arc_select(survey_fl)
+
+## Exursus, you can also load attachments in a folder from a survey
+
+
+##### Demo Survey123 ######
+
+
+
+```
+
+#### Demo - Reading attachments from a survey
+
+```{r publish, echo=FALSE}
+
+
+```
+
+
+#### Demo - Using ArcGIS Services
+
+
+```{r geocode, echo=FALSE}
+# Geocoding = words --> Location, reverse geocoding = location --> words
+###########################################
+# Read in "Take aways" prepared by me in ArcGIS Online
+takeaways_url <- "https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Just_eat_restaurants_in_Zurich/FeatureServer/0"
+
+# Read in as a reference layer
+takeaways_fl <- arc_open(takeaways_url)
+
+# Read in as SF object
+takeaways_sf <- arc_select(takeaways_fl)
+
+###########################################
+# Read bars API from the City of Zurich
+# Load JSON data from the URL
+url <- "https://www.zuerich.com/en/api/v2/data?id=103"
+json_data <- fromJSON(url, flatten = TRUE)
+
+# Convert JSON to a dataframe
+bars_df <- as.data.frame(json_data)
+
+# Cleanup
+# Clean up the data frame
+bars_df <- bars_df %>%
+  
+  # Step 1: Select and rename important columns to put them at the front
+  select(
+    name = name.en,          # Rename as needed
+    name_de = name.de,
+    type = `@type`, 
+    id = identifier, 
+    photo = photo, 
+    opening_hours = openingHours, 
+    opening_hours_spec = openingHoursSpecification, 
+    place = place,
+    
+    # Step 2: Select other relevant columns
+    everything()
+  ) %>%
+  
+  # Step 3: Rename all remaining column names to lowercase and underscores
+  rename_with(~ tolower(gsub("\\.", "_", .x))) 
+
+
+# Add a unique ID to the original bars_df for tracking
+bars_df <- bars_df %>%
+  mutate(original_id = row_number())
+
+# Create a subset of bars_df with missing coordinates
+bars_df_nocoords <- bars_df %>% 
+  filter(is.na(geocoordinates_latitude)) %>%
+  mutate(full_address = paste(address_streetaddress, address_postalcode, address_addresscountry, sep = ", "))
+
+# Perform geocoding
+set_arc_token(auth_user())
+geocoded <- geocode_addresses(single_line = bars_df_nocoords[["full_address"]])
+
+# Extract latitude and longitude from geometry if available
+if ("geometry" %in% colnames(geocoded)) {
+  geocoded_coords <- st_coordinates(geocoded$geometry)
+  geocoded <- geocoded %>%
+    mutate(
+      latitude = geocoded_coords[, 2],
+      longitude = geocoded_coords[, 1]
+    )
+} else {
+  warning("No geometry found in geocoded results.")
+}
+
+# Bind geocoded results back to bars_df_nocoords, keeping original identifiers
+bars_df_nocoords <- bars_df_nocoords %>%
+  bind_cols(
+    latitude = geocoded$latitude,
+    longitude = geocoded$longitude
+  )
+
+# Merge back into the original bars_df using the original ID
+bars_df <- bars_df %>%
+  left_join(
+    bars_df_nocoords %>% select(original_id, latitude, longitude),
+    by = c("original_id" = "original_id")
+  ) %>%
+  mutate(
+    geocoordinates_latitude = ifelse(is.na(geocoordinates_latitude), latitude, geocoordinates_latitude),
+    geocoordinates_longitude = ifelse(is.na(geocoordinates_longitude), longitude, geocoordinates_longitude)
+  ) %>%
+  select(-latitude, -longitude)
+
+# Convert to sf object
+bars_sf <- st_as_sf(bars_df, coords = c("geocoordinates_longitude", "geocoordinates_latitude"), crs = 4326)
+
+
+```
+
+#### Demo - Publishing from R in AGOL
+
+```{r publish, echo=FALSE}
+
+
+```
+
+#### Demo - Editing AGOL layers directly in R
+
+```{r editing, echo=FALSE}
+
+
+```
+
+
 
 ## Exercises
 
 You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(Test)
+```{r exercise, echo=FALSE}
+
+
 ```
