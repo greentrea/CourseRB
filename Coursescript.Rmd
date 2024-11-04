@@ -18,14 +18,12 @@ This is an R Markdown for the workshop "Linking R with Web Mapping: The R-ArcGIS
 ## Setup R for workshop
 Setting up your R environment.
 
-```{r Setup, echo=FALSE}
+```{r Setup, echo=TRUE, eval = FALSE}
 # CLASSICAL PACKAGE IMPORTERs
 
-# install.packages(
-#   "arcgisbinding", 
-#   repos = "https://r.esri.com", 
-#   type = "win.binary"
-#  )
+# Clean environment if necessary
+# rm(list = ls())
+
 
 packages_checker <- function(packages_list){
   for (package in packages_list){
@@ -48,8 +46,7 @@ packages_checker(
     #'cli' # last week something didnt work with progress bars
     ))
 
-# Clean environment if necessary
-# rm(list = ls())
+
 
 renv::restore()
 
@@ -71,7 +68,7 @@ getwd()
 
 You can load public services from the living atlas without licensing or use any ArcGIS License. Feature layers will be read in as [sf](https://r-spatial.github.io/sf/) object. See the [living atlas](https://livingatlas.arcgis.com/en/home/) of Esri for "official" datasets hosted by Esri or just search [ArcGIS Online (Sign in)](https://www.arcgis.com/home/) for any publicly available dataset. :
 
-```{r Demo access public living atlas data, echo=FALSE}
+```{r Demo access public living atlas data, echo=TRUE, eval=FALSE}
 # Save url of Service
 accidents_url <- 'https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Polizeilich_registrierte_Verkehrsunfälle_im_Kanton_Zürich_seit_2011/FeatureServer/0' # feature service of all traffic accidents of the canton of Zurich.
 
@@ -103,7 +100,7 @@ ggplot(data = accidents_featurelayer_sf) +
 ### Demo access private data of your account or publish data in your account (ArcGIS Online or ArcGIS Enterprise)
 
 
-```{r Demo access private data, echo=FALSE}
+```{r Demo access private data, echo=TRUE, eval=FALSE}
 ## Access private data of my ArcGIS Account
 # Save url of Service
 sruveyresults_url <- 'https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/survey123_111a8cddbd3c494bb25b685d6984631f_results/FeatureServer/0'
@@ -144,7 +141,7 @@ You can do so by creating an application item.
 *Optionally, specify the folder, tags, and summary as well.
 *You will be directed to the item details page of the newly created application where you can see your credentials. Do not share these.
 
-```{r Authorization, echo=FALSE}
+```{r Authorization, echo=TRUE, eval=FALSE}
 
 # Obtaining a Client ID
 # Please follow these steps see above https://r.esri.com/r-bridge-site/docs/auth/connecting-to-a-portal.html#obtaining-a-client-id
@@ -153,14 +150,14 @@ You can do so by creating an application item.
 Sys.setenv(ARCGIS_CLIENT = "qhmvug4Qc984TWRV") #Use your own Client ID
 token <- auth_code() # Allow in browser and enter token in console!
 set_arc_token(token) # set token for all future environment functions (but if you get strange error messages while opening private feature layer --> add token manually to function)
-
+# old way set_arc_token(auth_user()) --> if sth doesnt work test this
 ```
+
 #### Demo - Reading private vector or image layers (types of AGOL layers)
 
-```{r reading private, echo=FALSE}
+```{r reading private, echo=TRUE, eval=FALSE}
 # Load survey results from my private survey with you
 survey_url <- "https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/survey123_a26158c869224447903aa8dad3029715_results/FeatureServer/0"
-
 
 # Read in as a reference layer
 survey_fl <- arc_open(survey_url) # token needed if not public layer
@@ -168,19 +165,31 @@ survey_fl <- arc_open(survey_url) # token needed if not public layer
 # Read in as SF object
 survey_sf <- arc_select(survey_fl)
 
-## Exursus, you can also load attachments in a folder from a survey
+# Its also possible to read in imagery services
+url <- "https://tiledimageservices9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Z%C3%BCrich_Swissimage_Test_RBridge/ImageServer"
+worldimagery_esrimap_url_img <- arc_open(url,token = token)
 
-
-##### Demo Survey123 ######
-
-
+worldimagery_esrimap_url_img$extent
+zurich <- arc_raster(
+  x = worldimagery_esrimap_url,
+  xmin = "948917.1",   # Numeric value
+  xmax = "951906.2",    # Numeric value
+  ymin = "6002429",   # Numeric value
+  ymax = "6005428"    # Numeric value
+)
+crater
+terra::plotRGB(crater, stretch = "lin")
 
 ```
 
-#### Demo - Reading attachments from a survey
+#### Demo Exkursus - Reading attachments from a survey
 
-```{r publish, echo=FALSE}
+```{r Exkursus reading survey attachments, echo=TRUE, eval=FALSE}
 
+## Exursus, you can also load attachments in a folder from a survey
+
+##### Demo Survey123 ######
+print("will come soon")
 
 ```
 
@@ -188,7 +197,7 @@ survey_sf <- arc_select(survey_fl)
 #### Demo - Using ArcGIS Services
 
 
-```{r geocode, echo=FALSE}
+```{r geocode, echo=TRUE, eval=FALSE}
 # Geocoding = words --> Location, reverse geocoding = location --> words
 ###########################################
 # Read in "Take aways" prepared by me in ArcGIS Online
@@ -242,7 +251,6 @@ bars_df_nocoords <- bars_df %>%
   mutate(full_address = paste(address_streetaddress, address_postalcode, address_addresscountry, sep = ", "))
 
 # Perform geocoding
-set_arc_token(auth_user())
 geocoded <- geocode_addresses(single_line = bars_df_nocoords[["full_address"]])
 
 # Extract latitude and longitude from geometry if available
@@ -282,19 +290,107 @@ bars_sf <- st_as_sf(bars_df, coords = c("geocoordinates_longitude", "geocoordina
 
 ```
 
-#### Demo - Publishing from R in AGOL
+#### Demo - Publishing from R to AGOL 
 
-```{r publish, echo=FALSE}
+```{r publish, echo=TRUE, eval=FALSE}
+# publish a sf object
+bars_sf <- bars_sf %>%
+  mutate(
+    tomasbookingid = sapply(tomasbookingid, as.character), # Convert logical to character
+    zurichcard = sapply(zurichcard, as.character), # Convert logical to character
+    place = sapply(place, function(x) if (is.list(x)) paste(x, collapse = "; ") else as.character(x)),
+    opens = sapply(opens, function(x) if (is.list(x)) paste(x, collapse = "; ") else as.character(x))
+  )
+
+
+bars_sf <- bars_sf %>% 
+  mutate(
+    photo = map_chr(photo, ~ paste(unlist(.), collapse = "; ")),
+    opening_hours = map_chr(opening_hours, ~ paste(unlist(.), collapse = "; ")),
+    opening_hours_spec = map_chr(opening_hours_spec, ~ paste(unlist(.), collapse = "; ")),
+    place = map_chr(place, ~ paste(unlist(.), collapse = "; ")),
+    opens = map_chr(opens, ~ paste(unlist(.), collapse = "; ")),
+    detailedinformation_de = map_chr(detailedinformation_de, ~ paste(unlist(.), collapse = "; ")),
+    detailedinformation_en = map_chr(detailedinformation_en, ~ paste(unlist(.), collapse = "; ")),
+    detailedinformation_fr = map_chr(detailedinformation_fr, ~ paste(unlist(.), collapse = "; ")),
+    detailedinformation_it = map_chr(detailedinformation_it, ~ paste(unlist(.), collapse = "; "))
+  )
+bars_sf <- bars_sf %>% 
+  rename(context = `@context`, customtype = `@customtype`)
+
+
+# Define the important columns including only _de and _en columns
+important_columns <- c("name", "type", "id", "photo", "opening_hours", 
+                       "opening_hours_spec", "context", "customtype", 
+                       "license", "tomasbookingid", "zurichcard", 
+                       "osm_id", "datemodified", "opens", 
+                       "copyrightholder_de", "copyrightholder_en", 
+                       "name_de",
+                       "disambiguatingdescription_de", "disambiguatingdescription_en", 
+                       "description_de", "description_en", 
+                       "image_url")
+
+# Remove HTML tags and entities from the description_de column
+bars_sf_important$description_de <- gsub("<[^>]+>", "", bars_sf_important$description_de)  # Remove HTML tags
+bars_sf_important$description_de <- str_replace_all(bars_sf_important$description_de, "&[a-zA-Z]+;", "")  # Remove HTML entities
+
+# If you're also concerned about the description_en column, apply the same cleaning
+bars_sf_important$description_en <- gsub("<[^>]+>", "", bars_sf_important$description_en)  # Remove HTML tags
+bars_sf_important$description_en <- str_replace_all(bars_sf_important$description_en, "&[a-zA-Z]+;", "")  # Remove HTML entities
+
+# Create a new data frame with only the important columns
+bars_sf_important <- bars_sf[ , important_columns]
+
+
+# Publish the new data frame
+arcgislayers::publish_layer(bars_sf_important, 
+                            title = "Bars in Zurich", 
+                            publish_params = .publish_params(name="Bars in Zurich",description = "Schweiz Tourismus Zürich: Bars und Lounges in Zürich und der Region unterteilt in Restaurant-Bar, Afterwork, Ausgewählte Spirituosen, Cocktailbar, Freiluft-Bereich, Hotelbar, Musikbar / Live Music, Pub /, Spezielle Biere, Quartierbar, Weinbar und Kulturlokal.", copyright = "Info see  https://data.stadt-zuerich.ch/dataset/zt_bars"))
 
 
 ```
 
 #### Demo - Editing AGOL layers directly in R
+We can also alter already published layer or empty and refill a published layer (similar as delete but without change of naming, and attribute schema). Therefore the following functions can be used.
+*truncate_layer()
+*add_features()
+*update_features()
+*delete_features()
 
-```{r editing, echo=FALSE}
+```{r editing, echo=TRUE, eval=FALSE}
+### Republish full layer (truncate and add_features)
+# Oh we have some additional items we wanna add. Or we want to replace the whole spatial data frame (sf object). So lets truncate or republish the layer (this is not a full deletion as this is not possible but we empty the feature service and refill it.)
+bars_online_url <- "https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Bars%20in%20Zurich/FeatureServer/0"
 
+bars_online_fl <- arc_open(bars_online_url)
+
+bars_online_fl[["supportsTruncate"]]
+
+truncate_res <- truncate_layer(bars_online_fl)
+
+bars_online_fl <- refresh_layer(bars_online_fl)
+
+# Check for NA or empty strings, or other stuff which causes errors in add_features
+bars_sf_important <- bars_sf_important[!is.na(bars_sf_important$description_en) & bars_sf_important$description_en != "", ]
+bars_sf_important <- bars_sf_important[!is.na(bars_sf_important$description_de) & bars_sf_important$description_de != "", ]
+bars_sf_important <- bars_sf_important %>% select(-description_de, -description_en) 
+
+# Proceed to add features
+add_res <- add_features(bars_online_fl, bars_sf_important)
+
+bars_online_fl <- refresh_layer(bars_online_fl) # if you use it in R again
+
+
+### Other possible edit functions:
+# Alternatively, we can delete features based on a where clause. Say we wanted to delete all of the features where the zurichcard value is true. We can accomplish this using a where clause.
+
+bars_online_url_deletion_url <- "https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Bars%20in%20Zurich/FeatureServer/0"
+bars_online_deletion <- arc_open(bars_online_url_deletion_url)
+bars_online_deleted <- delete_features(bars_online_deletion, where = "object_id < 100")
+bars_online_deleted # See which are deleted, also check in AGOL if layer did really refresh and deletion is complete.
 
 ```
+
 
 
 
@@ -302,7 +398,7 @@ bars_sf <- st_as_sf(bars_df, coords = c("geocoordinates_longitude", "geocoordina
 
 You can also embed plots, for example:
 
-```{r exercise, echo=FALSE}
+```{r exercise, echo=FALSE, eval=FALSE}
 
 
 ```

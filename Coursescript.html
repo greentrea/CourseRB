@@ -11,9 +11,9 @@
 
 <meta name="author" content="Stefan Graf &amp; Saskia Stierli" />
 
-<meta name="date" content="2024-10-15" />
+<meta name="date" content="2024-11-04" />
 
-<title>2024_UZH_RBridge</title>
+<title>2024 UZH R-Bridge Workshop</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -350,9 +350,9 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">2024_UZH_RBridge</h1>
+<h1 class="title toc-ignore">2024 UZH R-Bridge Workshop</h1>
 <h4 class="author">Stefan Graf &amp; Saskia Stierli</h4>
-<h4 class="date">2024-10-15</h4>
+<h4 class="date">2024-11-04</h4>
 
 </div>
 
@@ -366,31 +366,357 @@ The R-ArcGIS Bridge” at the Unviersity of Zurich.</p>
 <div id="setup-r-for-workshop" class="section level2">
 <h2>Setup R for workshop</h2>
 <p>Setting up your R environment.</p>
-<pre><code>## Lade nötiges Paket: dplyr</code></pre>
-<pre><code>## 
-## Attache Paket: &#39;dplyr&#39;</code></pre>
-<pre><code>## Die folgenden Objekte sind maskiert von &#39;package:stats&#39;:
-## 
-##     filter, lag</code></pre>
-<pre><code>## Die folgenden Objekte sind maskiert von &#39;package:base&#39;:
-## 
-##     intersect, setdiff, setequal, union</code></pre>
-<pre><code>## Lade nötiges Paket: arcgis</code></pre>
-<pre><code>## Attaching core arcgis packages:
-## → arcgisutils v0.3.1
-## → arcgislayers v0.3.1
-## → arcgisgeocode v0.2.2
-## → arcgisplaces v0.1.0
-## Lade nötiges Paket: sf
-## 
-## Linking to GEOS 3.12.1, GDAL 3.8.4, PROJ 9.3.1; sf_use_s2() is TRUE</code></pre>
-<pre><code>## - The library is already synchronized with the lockfile.</code></pre>
-<pre><code>## [1] &quot;C:/Users/stgr/OneDrive - Esri Deutschland + Esri Schweiz/Stefan @ Esri Deutschland + Esri Schweiz - Linked Files/03_Unis/01_Projects/2024_R-Bridge/2024_UZH_RBridge&quot;</code></pre>
+<pre class="r"><code># CLASSICAL PACKAGE IMPORTERs
+
+# Clean environment if necessary
+# rm(list = ls())
+
+
+packages_checker &lt;- function(packages_list){
+  for (package in packages_list){
+    if (!require(package, character.only = T)) {
+      install.packages(package)
+    }
+    library(package, character.only = T)
+  }
+}
+packages_checker(
+  c(&#39;dplyr&#39;,
+    &#39;arcgis&#39;,
+    &#39;arcgisbinding&#39;,
+    &#39;sf&#39;,
+    &#39;ggplot2&#39;,
+    &#39;GGally&#39;,
+    &#39;tidyverse&#39;,
+    &#39;fuzzyjoin&#39;,
+    &#39;jsonlite&#39;    
+    #&#39;cli&#39; # last week something didnt work with progress bars
+    ))
+
+
+
+renv::restore()
+
+# See working directory
+getwd()
+
+# Usefull shortcuts on windows
+# set variable [alt+-]
+# piping [ctrl+shift+m]
+# format code [ctrl+l]
+# uncomment or comment code [ctrl+shift+c]</code></pre>
 </div>
-<div id="testing-out-demo" class="section level2">
-<h2>Testing out (Demo)</h2>
-<p>You can load public services from the living atlas. They will be read
-in as a <a href="https://r-spatial.github.io/sf/">sf</a> object. :</p>
+<div id="an-example-of-how-to-use-the-arcgis-bridge-demo" class="section level2">
+<h2>An example of how to use the ArcGIS Bridge (Demo)</h2>
+<div id="demo-access-public-living-atlas-data" class="section level3">
+<h3>Demo access public living atlas data</h3>
+<p>You can load public services from the living atlas without licensing
+or use any ArcGIS License. Feature layers will be read in as <a href="https://r-spatial.github.io/sf/">sf</a> object. See the <a href="https://livingatlas.arcgis.com/en/home/">living atlas</a> of Esri
+for “official” datasets hosted by Esri or just search <a href="https://www.arcgis.com/home/">ArcGIS Online (Sign in)</a> for any
+publicly available dataset. :</p>
+<pre class="r"><code># Save url of Service
+accidents_url &lt;- &#39;https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Polizeilich_registrierte_Verkehrsunfälle_im_Kanton_Zürich_seit_2011/FeatureServer/0&#39; # feature service of all traffic accidents of the canton of Zurich.
+
+# Connect to feature service
+accidents_featurelayer &lt;- arc_open(accidents_url) # meta data appears in R environment data as a list
+# Add optionally a filter with arc_open(layername, where = &quot;AccidentSevirety=&#39;fatal&#39;&quot;)
+
+# Create a SF object from feature service
+accidents_featurelayer_sf &lt;- arc_select(accidents_featurelayer)
+
+# Plot traffic accidents by severity
+ggplot(data = accidents_featurelayer_sf) +
+  geom_sf(aes(color = AccidentSeverityCategory), size = 0.5, alpha = 0.6) +
+  scale_color_viridis_d(option = &quot;C&quot;, end = 0.8) + # Option C provides a varied color scale for severity
+  labs(
+    title = &quot;Traffic Accidents by Severity in the Canton of Zurich&quot;,
+    color = &quot;Severity Category&quot;
+  ) +
+  theme_minimal() +
+  theme(legend.position = &quot;bottom&quot;)
+
+# #Or load a huge dataset ;) just takes 12h (1 Mio is ok but if its above it gets slow like this 100 Mio Dataset)
+# iNaturalist_url &lt;- &#39;https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/iNat_PreUC_View/FeatureServer/0&#39; # feature service of all traffic accidents of the canton of Zurich.
+# iNaturalist_fl &lt;- arc_open(iNaturalist_url) # meta data appears in R environment data as a list
+# iNaturalist_sf &lt;- arc_select(iNaturalist_fl,
+#                              where = &quot;scientific_name =&#39;pongo abelii&#39;&quot;) # Filter f.e. for Orangutans</code></pre>
+</div>
+<div id="demo-access-private-data-of-your-account-or-publish-data-in-your-account-arcgis-online-or-arcgis-enterprise" class="section level3">
+<h3>Demo access private data of your account or publish data in your
+account (ArcGIS Online or ArcGIS Enterprise)</h3>
+<pre class="r"><code>## Access private data of my ArcGIS Account
+# Save url of Service
+sruveyresults_url &lt;- &#39;https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/survey123_111a8cddbd3c494bb25b685d6984631f_results/FeatureServer/0&#39;
+
+# Connect to feature service 
+sruveyresults_fl &lt;- arc_open(sruveyresults_url) # --&gt; We cant connect as this data is private of my account! We first have to authorize R to access.</code></pre>
+<div id="authorization-process-to-connect-r-to-my-arcgis-account-hold-your-arcgis-login-ready" class="section level4">
+<h4>Authorization Process to connect R to my ArcGIS Account (hold your
+ArcGIS Login ready)</h4>
+<p>There a number of times when you will need to verify who you say you
+are when using ArcGIS location services. This is done through a process
+called authentication. Authentication is required when you want to:</p>
+<p><em>access private content </em>publish your own layers <em>use
+services like geocode addresses in bulk from an ArcGIS client service
+</em>store geocoding results in a file *or access POI data through
+{arcgisplaces}</p>
+<p>If you want to use R within ArcGIS Pro see the arcgisbinding package
+authorization <a href="https://r.esri.com/r-bridge-site/docs/installation.html">here</a></p>
+</div>
+<div id="now-a-short-tricky-bit-.---our-authentication-process" class="section level4">
+<h4>Now a short tricky bit! ;). - Our Authentication process</h4>
+<p>There are some options to “login” or authenticate ArcGIS online.
+Originally there were just functions to put in your password and
+credentials. After years some standards were established and we will for
+this course now use the following: The code flow-based authentication in
+ArcGIS for R uses OAuth2. When you run auth_code(), a browser tab opens,
+prompting you to sign in and copy an authorization code. Paste this code
+back into R to generate a temporary access token, allowing the
+application to interact with your account securely. This token expires
+periodically, so you’ll need to renew it as needed. For further details,
+you can view the full guide here (<a href="https://r.esri.com/r-bridge-site/docs/auth/connecting-to-a-portal.html" class="uri">https://r.esri.com/r-bridge-site/docs/auth/connecting-to-a-portal.html</a>).</p>
+</div>
+<div id="section" class="section level4">
+<h4></h4>
+<p>If a client ID is not provided to you by an administrator and you
+have the ability to create content items, you can create one.</p>
+<p>You can do so by creating an application item.</p>
+<p><em>Log in to your ArcGIS Online or ArcGIS Enterprise organization
+</em>Navigate to the Content tab <em>Click New Item </em>Select
+Application <em>Choose Other application as your Application Type
+</em>Give the item an informative name such as r-arcgis <em>Optionally,
+specify the folder, tags, and summary as well. </em>You will be directed
+to the item details page of the newly created application where you can
+see your credentials. Do not share these.</p>
+<pre class="r"><code># Obtaining a Client ID
+# Please follow these steps see above https://r.esri.com/r-bridge-site/docs/auth/connecting-to-a-portal.html#obtaining-a-client-id
+
+# Authorization there are different methods all a bit complicated! I choose the easiest way. Please run the below seperately and login in the opening browser.
+Sys.setenv(ARCGIS_CLIENT = &quot;qhmvug4Qc984TWRV&quot;) #Use your own Client ID
+token &lt;- auth_code() # Allow in browser and enter token in console!
+set_arc_token(token) # set token for all future environment functions (but if you get strange error messages while opening private feature layer --&gt; add token manually to function)
+# old way set_arc_token(auth_user()) --&gt; if sth doesnt work test this</code></pre>
+</div>
+<div id="demo---reading-private-vector-or-image-layers-types-of-agol-layers" class="section level4">
+<h4>Demo - Reading private vector or image layers (types of AGOL
+layers)</h4>
+<pre class="r"><code># Load survey results from my private survey with you
+survey_url &lt;- &quot;https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/survey123_a26158c869224447903aa8dad3029715_results/FeatureServer/0&quot;
+
+# Read in as a reference layer
+survey_fl &lt;- arc_open(survey_url) # token needed if not public layer
+
+# Read in as SF object
+survey_sf &lt;- arc_select(survey_fl)
+
+# Its also possible to read in imagery services
+url &lt;- &quot;https://tiledimageservices9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Z%C3%BCrich_Swissimage_Test_RBridge/ImageServer&quot;
+worldimagery_esrimap_url_img &lt;- arc_open(url,token = token)
+
+worldimagery_esrimap_url_img$extent
+zurich &lt;- arc_raster(
+  x = worldimagery_esrimap_url,
+  xmin = &quot;948917.1&quot;,   # Numeric value
+  xmax = &quot;951906.2&quot;,    # Numeric value
+  ymin = &quot;6002429&quot;,   # Numeric value
+  ymax = &quot;6005428&quot;    # Numeric value
+)
+crater
+terra::plotRGB(crater, stretch = &quot;lin&quot;)</code></pre>
+</div>
+<div id="demo-exkursus---reading-attachments-from-a-survey" class="section level4">
+<h4>Demo Exkursus - Reading attachments from a survey</h4>
+<pre class="r"><code>## Exursus, you can also load attachments in a folder from a survey
+
+##### Demo Survey123 ######
+print(&quot;will come soon&quot;)</code></pre>
+</div>
+<div id="demo---using-arcgis-services" class="section level4">
+<h4>Demo - Using ArcGIS Services</h4>
+<pre class="r"><code># Geocoding = words --&gt; Location, reverse geocoding = location --&gt; words
+###########################################
+# Read in &quot;Take aways&quot; prepared by me in ArcGIS Online
+takeaways_url &lt;- &quot;https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Just_eat_restaurants_in_Zurich/FeatureServer/0&quot;
+
+# Read in as a reference layer
+takeaways_fl &lt;- arc_open(takeaways_url)
+
+# Read in as SF object
+takeaways_sf &lt;- arc_select(takeaways_fl)
+
+###########################################
+# Read bars API from the City of Zurich
+# Load JSON data from the URL
+url &lt;- &quot;https://www.zuerich.com/en/api/v2/data?id=103&quot;
+json_data &lt;- fromJSON(url, flatten = TRUE)
+
+# Convert JSON to a dataframe
+bars_df &lt;- as.data.frame(json_data)
+
+# Cleanup
+# Clean up the data frame
+bars_df &lt;- bars_df %&gt;%
+  
+  # Step 1: Select and rename important columns to put them at the front
+  select(
+    name = name.en,          # Rename as needed
+    name_de = name.de,
+    type = `@type`, 
+    id = identifier, 
+    photo = photo, 
+    opening_hours = openingHours, 
+    opening_hours_spec = openingHoursSpecification, 
+    place = place,
+    
+    # Step 2: Select other relevant columns
+    everything()
+  ) %&gt;%
+  
+  # Step 3: Rename all remaining column names to lowercase and underscores
+  rename_with(~ tolower(gsub(&quot;\\.&quot;, &quot;_&quot;, .x))) 
+
+
+# Add a unique ID to the original bars_df for tracking
+bars_df &lt;- bars_df %&gt;%
+  mutate(original_id = row_number())
+
+# Create a subset of bars_df with missing coordinates
+bars_df_nocoords &lt;- bars_df %&gt;% 
+  filter(is.na(geocoordinates_latitude)) %&gt;%
+  mutate(full_address = paste(address_streetaddress, address_postalcode, address_addresscountry, sep = &quot;, &quot;))
+
+# Perform geocoding
+geocoded &lt;- geocode_addresses(single_line = bars_df_nocoords[[&quot;full_address&quot;]])
+
+# Extract latitude and longitude from geometry if available
+if (&quot;geometry&quot; %in% colnames(geocoded)) {
+  geocoded_coords &lt;- st_coordinates(geocoded$geometry)
+  geocoded &lt;- geocoded %&gt;%
+    mutate(
+      latitude = geocoded_coords[, 2],
+      longitude = geocoded_coords[, 1]
+    )
+} else {
+  warning(&quot;No geometry found in geocoded results.&quot;)
+}
+
+# Bind geocoded results back to bars_df_nocoords, keeping original identifiers
+bars_df_nocoords &lt;- bars_df_nocoords %&gt;%
+  bind_cols(
+    latitude = geocoded$latitude,
+    longitude = geocoded$longitude
+  )
+
+# Merge back into the original bars_df using the original ID
+bars_df &lt;- bars_df %&gt;%
+  left_join(
+    bars_df_nocoords %&gt;% select(original_id, latitude, longitude),
+    by = c(&quot;original_id&quot; = &quot;original_id&quot;)
+  ) %&gt;%
+  mutate(
+    geocoordinates_latitude = ifelse(is.na(geocoordinates_latitude), latitude, geocoordinates_latitude),
+    geocoordinates_longitude = ifelse(is.na(geocoordinates_longitude), longitude, geocoordinates_longitude)
+  ) %&gt;%
+  select(-latitude, -longitude)
+
+# Convert to sf object
+bars_sf &lt;- st_as_sf(bars_df, coords = c(&quot;geocoordinates_longitude&quot;, &quot;geocoordinates_latitude&quot;), crs = 4326)</code></pre>
+</div>
+<div id="demo---publishing-from-r-to-agol" class="section level4">
+<h4>Demo - Publishing from R to AGOL</h4>
+<pre class="r"><code># publish a sf object
+bars_sf &lt;- bars_sf %&gt;%
+  mutate(
+    tomasbookingid = sapply(tomasbookingid, as.character), # Convert logical to character
+    zurichcard = sapply(zurichcard, as.character), # Convert logical to character
+    place = sapply(place, function(x) if (is.list(x)) paste(x, collapse = &quot;; &quot;) else as.character(x)),
+    opens = sapply(opens, function(x) if (is.list(x)) paste(x, collapse = &quot;; &quot;) else as.character(x))
+  )
+
+
+bars_sf &lt;- bars_sf %&gt;% 
+  mutate(
+    photo = map_chr(photo, ~ paste(unlist(.), collapse = &quot;; &quot;)),
+    opening_hours = map_chr(opening_hours, ~ paste(unlist(.), collapse = &quot;; &quot;)),
+    opening_hours_spec = map_chr(opening_hours_spec, ~ paste(unlist(.), collapse = &quot;; &quot;)),
+    place = map_chr(place, ~ paste(unlist(.), collapse = &quot;; &quot;)),
+    opens = map_chr(opens, ~ paste(unlist(.), collapse = &quot;; &quot;)),
+    detailedinformation_de = map_chr(detailedinformation_de, ~ paste(unlist(.), collapse = &quot;; &quot;)),
+    detailedinformation_en = map_chr(detailedinformation_en, ~ paste(unlist(.), collapse = &quot;; &quot;)),
+    detailedinformation_fr = map_chr(detailedinformation_fr, ~ paste(unlist(.), collapse = &quot;; &quot;)),
+    detailedinformation_it = map_chr(detailedinformation_it, ~ paste(unlist(.), collapse = &quot;; &quot;))
+  )
+bars_sf &lt;- bars_sf %&gt;% 
+  rename(context = `@context`, customtype = `@customtype`)
+
+
+# Define the important columns including only _de and _en columns
+important_columns &lt;- c(&quot;name&quot;, &quot;type&quot;, &quot;id&quot;, &quot;photo&quot;, &quot;opening_hours&quot;, 
+                       &quot;opening_hours_spec&quot;, &quot;context&quot;, &quot;customtype&quot;, 
+                       &quot;license&quot;, &quot;tomasbookingid&quot;, &quot;zurichcard&quot;, 
+                       &quot;osm_id&quot;, &quot;datemodified&quot;, &quot;opens&quot;, 
+                       &quot;copyrightholder_de&quot;, &quot;copyrightholder_en&quot;, 
+                       &quot;name_de&quot;,
+                       &quot;disambiguatingdescription_de&quot;, &quot;disambiguatingdescription_en&quot;, 
+                       &quot;description_de&quot;, &quot;description_en&quot;, 
+                       &quot;image_url&quot;)
+
+# Remove HTML tags and entities from the description_de column
+bars_sf_important$description_de &lt;- gsub(&quot;&lt;[^&gt;]+&gt;&quot;, &quot;&quot;, bars_sf_important$description_de)  # Remove HTML tags
+bars_sf_important$description_de &lt;- str_replace_all(bars_sf_important$description_de, &quot;&amp;[a-zA-Z]+;&quot;, &quot;&quot;)  # Remove HTML entities
+
+# If you&#39;re also concerned about the description_en column, apply the same cleaning
+bars_sf_important$description_en &lt;- gsub(&quot;&lt;[^&gt;]+&gt;&quot;, &quot;&quot;, bars_sf_important$description_en)  # Remove HTML tags
+bars_sf_important$description_en &lt;- str_replace_all(bars_sf_important$description_en, &quot;&amp;[a-zA-Z]+;&quot;, &quot;&quot;)  # Remove HTML entities
+
+# Create a new data frame with only the important columns
+bars_sf_important &lt;- bars_sf[ , important_columns]
+
+
+# Publish the new data frame
+arcgislayers::publish_layer(bars_sf_important, 
+                            title = &quot;Bars in Zurich&quot;, 
+                            publish_params = .publish_params(name=&quot;Bars in Zurich&quot;,description = &quot;Schweiz Tourismus Zürich: Bars und Lounges in Zürich und der Region unterteilt in Restaurant-Bar, Afterwork, Ausgewählte Spirituosen, Cocktailbar, Freiluft-Bereich, Hotelbar, Musikbar / Live Music, Pub /, Spezielle Biere, Quartierbar, Weinbar und Kulturlokal.&quot;, copyright = &quot;Info see  https://data.stadt-zuerich.ch/dataset/zt_bars&quot;))</code></pre>
+</div>
+<div id="demo---editing-agol-layers-directly-in-r" class="section level4">
+<h4>Demo - Editing AGOL layers directly in R</h4>
+<p>We can also alter already published layer or empty and refill a
+published layer (similar as delete but without change of naming, and
+attribute schema). Therefore the following functions can be used.
+<em>truncate_layer() </em>add_features() <em>update_features()
+</em>delete_features()</p>
+<pre class="r"><code>### Republish full layer (truncate and add_features)
+# Oh we have some additional items we wanna add. Or we want to replace the whole spatial data frame (sf object). So lets truncate or republish the layer (this is not a full deletion as this is not possible but we empty the feature service and refill it.)
+bars_online_url &lt;- &quot;https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Bars%20in%20Zurich/FeatureServer/0&quot;
+
+bars_online_fl &lt;- arc_open(bars_online_url)
+
+bars_online_fl[[&quot;supportsTruncate&quot;]]
+
+truncate_res &lt;- truncate_layer(bars_online_fl)
+
+bars_online_fl &lt;- refresh_layer(bars_online_fl)
+
+# Check for NA or empty strings, or other stuff which causes errors in add_features
+bars_sf_important &lt;- bars_sf_important[!is.na(bars_sf_important$description_en) &amp; bars_sf_important$description_en != &quot;&quot;, ]
+bars_sf_important &lt;- bars_sf_important[!is.na(bars_sf_important$description_de) &amp; bars_sf_important$description_de != &quot;&quot;, ]
+bars_sf_important &lt;- bars_sf_important %&gt;% select(-description_de, -description_en) 
+
+# Proceed to add features
+add_res &lt;- add_features(bars_online_fl, bars_sf_important)
+
+bars_online_fl &lt;- refresh_layer(bars_online_fl) # if you use it in R again
+
+
+### Other possible edit functions:
+# Alternatively, we can delete features based on a where clause. Say we wanted to delete all of the features where the zurichcard value is true. We can accomplish this using a where clause.
+
+bars_online_url_deletion_url &lt;- &quot;https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Bars%20in%20Zurich/FeatureServer/0&quot;
+bars_online_deletion &lt;- arc_open(bars_online_url_deletion_url)
+bars_online_deleted &lt;- delete_features(bars_online_deletion, where = &quot;object_id &lt; 100&quot;)
+bars_online_deleted # See which are deleted, also check in AGOL if layer did really refresh and deletion is complete.</code></pre>
+</div>
+</div>
 </div>
 <div id="exercises" class="section level2">
 <h2>Exercises</h2>
