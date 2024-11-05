@@ -12,9 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Script description
 This is an R Markdown for the workshop "Linking R with Web Mapping: The R-ArcGIS Bridge" at the Unviersity of Zurich.
 
-```{r summary}
-#Link of a final dashboard
-```
+
 ## Setup R for workshop
 Setting up your R environment.
 
@@ -395,10 +393,19 @@ bars_online_deleted # See which are deleted, also check in AGOL if layer did rea
 
 
 ## Exercises
+### Exercises preparation
 
 You can also embed plots, for example:
 
-```{r exercise, echo=FALSE, eval=FALSE}
+```{r exercise preparation, echo=FALSE, eval=FALSE}
 
+# Obtaining a Client ID
+# Please follow these steps see above https://r.esri.com/r-bridge-site/docs/auth/connecting-to-a-portal.html#obtaining-a-client-id
+
+# Authorization there are different methods all a bit complicated! I choose the easiest way. Please run the below seperately and login in the opening browser.
+Sys.setenv(ARCGIS_CLIENT = "qhmvug4Qc984TWRV") #Use your own Client ID
+token <- auth_code() # Allow in browser and enter token in console!
+set_arc_token(token) # set token for all future environment functions (but if you get strange error messages while opening private feature layer --> add token manually to function)
+# old way set_arc_token(auth_user()) --> if sth doesnt work test this
 
 ```
