@@ -34,13 +34,12 @@ packages_checker <- function(packages_list){
 packages_checker(
   c('dplyr',
     'arcgis',
-    'arcgisbinding',
     'sf',
     'ggplot2',
-    'GGally',
+    #'GGally',
     'tidyverse',
-    'fuzzyjoin',
-    'jsonlite'    
+    'rmarkdown',
+    'knitr'
     #'cli' # last week something didnt work with progress bars
     ))
 
@@ -163,20 +162,20 @@ survey_fl <- arc_open(survey_url) # token needed if not public layer
 # Read in as SF object
 survey_sf <- arc_select(survey_fl)
 
-# Its also possible to read in imagery services
-url <- "https://tiledimageservices9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Z%C3%BCrich_Swissimage_Test_RBridge/ImageServer"
-worldimagery_esrimap_url_img <- arc_open(url,token = token)
-
-worldimagery_esrimap_url_img$extent
-zurich <- arc_raster(
-  x = worldimagery_esrimap_url,
-  xmin = "948917.1",   # Numeric value
-  xmax = "951906.2",    # Numeric value
-  ymin = "6002429",   # Numeric value
-  ymax = "6005428"    # Numeric value
-)
-crater
-terra::plotRGB(crater, stretch = "lin")
+# # Its also possible to read in imagery services
+# url <- "https://tiledimageservices9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Z%C3%BCrich_Swissimage_Test_RBridge/ImageServer"
+# worldimagery_esrimap_url_img <- arc_open(url,token = token)
+# 
+# worldimagery_esrimap_url_img$extent
+# zurich <- arc_raster(
+#   x = worldimagery_esrimap_url,
+#   xmin = "948917.1",   # Numeric value
+#   xmax = "951906.2",    # Numeric value
+#   ymin = "6002429",   # Numeric value
+#   ymax = "6005428"    # Numeric value
+# )
+# crater
+# terra::plotRGB(crater, stretch = "lin")
 
 ```
 
@@ -193,7 +192,6 @@ print("will come soon")
 
 
 #### Demo - Using ArcGIS Services
-
 
 ```{r geocode, echo=TRUE, eval=FALSE}
 # Geocoding = words --> Location, reverse geocoding = location --> words
@@ -342,9 +340,7 @@ bars_sf_important <- bars_sf[ , important_columns]
 
 # Publish the new data frame
 arcgislayers::publish_layer(bars_sf_important, 
-                            title = "Bars in Zurich", 
-                            publish_params = .publish_params(name="Bars in Zurich",description = "Schweiz Tourismus Zürich: Bars und Lounges in Zürich und der Region unterteilt in Restaurant-Bar, Afterwork, Ausgewählte Spirituosen, Cocktailbar, Freiluft-Bereich, Hotelbar, Musikbar / Live Music, Pub /, Spezielle Biere, Quartierbar, Weinbar und Kulturlokal.", copyright = "Info see  https://data.stadt-zuerich.ch/dataset/zt_bars"))
-
+                            title = "Bars in Zurich test", token = token)
 
 ```
 
@@ -395,8 +391,6 @@ bars_online_deleted # See which are deleted, also check in AGOL if layer did rea
 ## Exercises
 ### Exercises preparation
 
-You can also embed plots, for example:
-
 ```{r exercise preparation, echo=FALSE, eval=FALSE}
 
 # Obtaining a Client ID
@@ -407,5 +401,137 @@ Sys.setenv(ARCGIS_CLIENT = "qhmvug4Qc984TWRV") #Use your own Client ID
 token <- auth_code() # Allow in browser and enter token in console!
 set_arc_token(token) # set token for all future environment functions (but if you get strange error messages while opening private feature layer --> add token manually to function)
 # old way set_arc_token(auth_user()) --> if sth doesnt work test this
+
+```
+
+### Task 1
+
+```{r}
+## load public data from arcgis online (I uploaded it there ;))
+
+# Save url of Service
+url_Zurich <- 'https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/AirBnB_Prices_Zurich_2017/FeatureServer/0'
+
+# Connect to feature service
+Zurich_featurelayer <- arc_open(url_Zurich) # meta data appears in R environment data as a list
+# Add optionally a filter with arc_open(layername, where = "AccidentSevirety='fatal'")
+
+# Create a SF object from feature service
+df_Zurich <- arc_select(Zurich_featurelayer)
+
+# alternative if you have it locally ;) df_Zurich <- read.csv("data/zurich/s3_files/zurich/tomslee_airbnb_zurich_1363_2017-06-22.csv")
+```
+
+```{r}
+## Check for zeros or NA values in price and bedrooms and keep only valid rows
+df_Zurich <- df_Zurich[!is.na(df_Zurich$price) & !is.na(df_Zurich$bedrooms) & df_Zurich$bedrooms > 0, ]
+```
+
+```{r}
+## Linear regression to determine the correlation between price and bedrooms
+model <- lm(price ~ bedrooms, data = df_Zurich)
+summary(model)
+
+## Predicting prices based on the model
+df_Zurich$predicted_price <- predict(model, newdata = df_Zurich)
+
+## Plot of actual and predicted prices
+plot(df_Zurich$bedrooms, df_Zurich$price, main = "Price vs. Sleepingrooms")
+abline(model, col = "blue")  # Adds the trend line
+```
+```{r}
+## Determine slope
+slope <- coef(model)["bedrooms"]
+
+## Calculate new attribute: price per bedroom
+df_Zurich$price_per_bedroom <- df_Zurich$price / (df_Zurich$bedrooms * slope)
+
+# Values above 1 indicate a price higher than expected, and values below 1 indicate a lower-than-expected price based on the model's slope.
+```
+
+```{r}
+## Calculating the 5th and 95th percentiles for price_per_bedroom
+lower_bound <- quantile(df_Zurich$price_per_bedroom, 0.05, na.rm = TRUE)
+upper_bound <- quantile(df_Zurich$price_per_bedroom, 0.95, na.rm = TRUE)
+
+## Remove values outside the 5% and 95% limits
+df_Zurich_no_outliers <- df_Zurich[df_Zurich$price_per_bedroom >= lower_bound & df_Zurich$price_per_bedroom <= upper_bound, ]
+```
+
+```{r}
+## Calculate minimum and maximum for normalization
+min_price_per_bedroom <- min(df_Zurich_no_outliers$price_per_bedroom, na.rm = TRUE)
+max_price_per_bedroom <- max(df_Zurich_no_outliers$price_per_bedroom, na.rm = TRUE)
+```
+
+```{r}
+## Normalization: normalize price per bedroom to the range [0, 1]
+df_Zurich_no_outliers$normalized_price_per_bedroom <- (df_Zurich_no_outliers$price_per_bedroom - min_price_per_bedroom) / 
+                                                      (max_price_per_bedroom - min_price_per_bedroom)
+
+```
+
+```{r}
+## Publish the layer to ArcGIS Online
+df_Zurich_no_outliers<- df_Zurich_no_outliers %>% dplyr::select(-bathrooms,-minstay) # bathrooms is empty
+
+arcgislayers::publish_layer(
+  df_Zurich_no_outliers,
+  title = "AirBnB Prices Zurich points", token = token)
+
+```
+### Task 2
+
+```{r}
+## Import the feature layer of the city districts from ArcGIS Online via URL below (I provide this). Replace the URL of the zurich aribnb point data with your published dataset url.
+# Remember to add the /0 at the end of the link. Also check there are no spaces allowed replace them with %
+stadtkreise <- arc_select(arc_open("https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/stzh_adm_stadtkreise_a/FeatureServer/0"))
+zurich_airbnb_sf <- arc_select(arc_open("https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/AirBnB%20Prices%20Zurich%20points/FeatureServer/0"))
+
+# plot the stadtkreise
+ggplot(data = stadtkreise) +
+  geom_sf() +
+  theme_minimal() +
+  ggtitle("Stadtkreise Zürich")
+
+```
+
+```{r}
+# Spatial linking of Airbnb data with urban districts
+price_per_district <- st_join(zurich_airbnb_sf, stadtkreise, join = st_within)
+
+# Calculate the average price per urban district
+average_price <- as.data.frame(price_per_district) %>% 
+  select(-geometry) %>% 
+  group_by(neighborhood) %>%
+  summarise(avg_price = mean(price, na.rm = TRUE))
+
+```
+
+```{r}
+# Convert the urban district SF object to a data frame
+stadtkreise_df <- as.data.frame(stadtkreise)
+
+# Adding the average price to the urban districts
+stadtkreise_df <- stadtkreise_df %>%
+  left_join(average_price, by = c("bezeichnung" = "neighborhood")) 
+
+# Convert it back to an sf object.
+stadtkreise_prices <- st_as_sf(stadtkreise_df)
+
+```
+
+```{r}
+## Publish the polygon layer to ArcGIS Online
+arcgislayers::publish_layer(
+  stadtkreise_prices,
+  title = "Avg Prices per District Zurich Airbnb",
+  description = "RBridge Course: Avg Prices per District Zurich Airbnb")
+
+```
+
+```{r}
+# Optional: Task three you go to ArcGIS online to look at the dataset below and compare it with your published layer. I already published it for you.
+zuri_complete <- read_csv("data/perception/zuri_complete.csv")
 
 ```
