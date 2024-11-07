@@ -420,7 +420,7 @@ set_arc_token(token) # set token for all future environment functions (but if yo
 
 ### Task 1
 
-```{r}
+```{r eval=FALSE}
 ## load public data from arcgis online (I uploaded it there ;))
 
 # Save url of Service
@@ -436,12 +436,12 @@ df_Zurich <- arc_select(Zurich_featurelayer)
 # alternative if you have it locally ;) df_Zurich <- read.csv("data/zurich/s3_files/zurich/tomslee_airbnb_zurich_1363_2017-06-22.csv")
 ```
 
-```{r}
+```{r eval=FALSE}
 ## Check for zeros or NA values in price and bedrooms and keep only valid rows
 df_Zurich <- df_Zurich[!is.na(df_Zurich$price) & !is.na(df_Zurich$bedrooms) & df_Zurich$bedrooms > 0, ]
 ```
 
-```{r}
+```{r eval=FALSE}
 ## Linear regression to determine the correlation between price and bedrooms
 model <- lm(price ~ bedrooms, data = df_Zurich)
 summary(model)
@@ -453,7 +453,8 @@ df_Zurich$predicted_price <- predict(model, newdata = df_Zurich)
 plot(df_Zurich$bedrooms, df_Zurich$price, main = "Price vs. Sleepingrooms")
 abline(model, col = "blue")  # Adds the trend line
 ```
-```{r}
+
+```{r eval=FALSE}
 ## Determine slope
 slope <- coef(model)["bedrooms"]
 
@@ -463,7 +464,7 @@ df_Zurich$price_per_bedroom <- df_Zurich$price / (df_Zurich$bedrooms * slope)
 # Values above 1 indicate a price higher than expected, and values below 1 indicate a lower-than-expected price based on the model's slope.
 ```
 
-```{r}
+```{r eval=FALSE}
 ## Calculating the 5th and 95th percentiles for price_per_bedroom
 lower_bound <- quantile(df_Zurich$price_per_bedroom, 0.05, na.rm = TRUE)
 upper_bound <- quantile(df_Zurich$price_per_bedroom, 0.95, na.rm = TRUE)
@@ -472,20 +473,20 @@ upper_bound <- quantile(df_Zurich$price_per_bedroom, 0.95, na.rm = TRUE)
 df_Zurich_no_outliers <- df_Zurich[df_Zurich$price_per_bedroom >= lower_bound & df_Zurich$price_per_bedroom <= upper_bound, ]
 ```
 
-```{r}
+```{r eval=FALSE}
 ## Calculate minimum and maximum for normalization
 min_price_per_bedroom <- min(df_Zurich_no_outliers$price_per_bedroom, na.rm = TRUE)
 max_price_per_bedroom <- max(df_Zurich_no_outliers$price_per_bedroom, na.rm = TRUE)
 ```
 
-```{r}
+```{r eval=FALSE}
 ## Normalization: normalize price per bedroom to the range [0, 1]
 df_Zurich_no_outliers$normalized_price_per_bedroom <- (df_Zurich_no_outliers$price_per_bedroom - min_price_per_bedroom) / 
                                                       (max_price_per_bedroom - min_price_per_bedroom)
 
 ```
 
-```{r}
+```{r eval=FALSE}
 ## Publish the layer to ArcGIS Online
 df_Zurich_no_outliers<- df_Zurich_no_outliers %>% dplyr::select(-bathrooms,-minstay) # bathrooms is empty
 
@@ -496,7 +497,7 @@ arcgislayers::publish_layer(
 ```
 ### Task 2
 
-```{r}
+```{r eval=FALSE}
 ## Import the feature layer of the city districts from ArcGIS Online via URL below (I provide this). Replace the URL of the zurich aribnb point data with your published dataset url.
 # Remember to add the /0 at the end of the link. Also check there are no spaces allowed replace them with %
 stadtkreise <- arc_select(arc_open("https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/stzh_adm_stadtkreise_a/FeatureServer/0"))
@@ -510,7 +511,7 @@ ggplot(data = stadtkreise) +
 
 ```
 
-```{r}
+```{r eval=FALSE}
 # Spatial linking of Airbnb data with urban districts
 price_per_district <- st_join(zurich_airbnb_sf, stadtkreise, join = st_within)
 
@@ -522,7 +523,7 @@ average_price <- as.data.frame(price_per_district) %>%
 
 ```
 
-```{r}
+```{r eval=FALSE}
 # Convert the urban district SF object to a data frame
 stadtkreise_df <- as.data.frame(stadtkreise)
 
@@ -535,7 +536,7 @@ stadtkreise_prices <- st_as_sf(stadtkreise_df)
 
 ```
 
-```{r}
+```{r eval=FALSE}
 ## Publish the polygon layer to ArcGIS Online
 arcgislayers::publish_layer(
   stadtkreise_prices,
@@ -544,7 +545,7 @@ arcgislayers::publish_layer(
 
 ```
 
-```{r}
+```{r eval=FALSE}
 # Optional: Task three you go to ArcGIS online to look at the dataset below and compare it with your published layer. I already published it for you.
 zuri_complete <- read_csv("data/perception/zuri_complete.csv")
 
