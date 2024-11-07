@@ -339,6 +339,9 @@ important_columns <- c("name", "type", "id", "photo", "opening_hours",
                        "description_de", "description_en", 
                        "image_url")
 
+# Create a new data frame with only the important columns
+bars_sf_important <- bars_sf[ , important_columns]
+
 # Remove HTML tags and entities from the description_de column
 bars_sf_important$description_de <- gsub("<[^>]+>", "", bars_sf_important$description_de)  # Remove HTML tags
 bars_sf_important$description_de <- str_replace_all(bars_sf_important$description_de, "&[a-zA-Z]+;", "")  # Remove HTML entities
@@ -347,13 +350,11 @@ bars_sf_important$description_de <- str_replace_all(bars_sf_important$descriptio
 bars_sf_important$description_en <- gsub("<[^>]+>", "", bars_sf_important$description_en)  # Remove HTML tags
 bars_sf_important$description_en <- str_replace_all(bars_sf_important$description_en, "&[a-zA-Z]+;", "")  # Remove HTML entities
 
-# Create a new data frame with only the important columns
-bars_sf_important <- bars_sf[ , important_columns]
 
 
 # Publish the new data frame
 arcgislayers::publish_layer(bars_sf_important, 
-                            title = "Bars in Zurich test", token = token)
+                            title = "Bars in Zurich test2", token = token)
 
 ```
 
