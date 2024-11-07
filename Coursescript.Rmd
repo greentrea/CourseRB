@@ -368,7 +368,7 @@ We can also alter already published layer or empty and refill a published layer 
 ```{r editing, echo=TRUE, eval=FALSE}
 ### Republish full layer (truncate and add_features)
 # Oh we have some additional items we wanna add. Or we want to replace the whole spatial data frame (sf object). So lets truncate or republish the layer (this is not a full deletion as this is not possible but we empty the feature service and refill it.)
-bars_online_url <- "https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Bars%20in%20Zurich/FeatureServer/0"
+bars_online_url <- "https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Bars%20in%20Zurich%20test2/FeatureServer/0"
 
 bars_online_fl <- arc_open(bars_online_url)
 
@@ -392,7 +392,7 @@ bars_online_fl <- refresh_layer(bars_online_fl) # if you use it in R again
 ### Other possible edit functions:
 # Alternatively, we can delete features based on a where clause. Say we wanted to delete all of the features where the zurichcard value is true. We can accomplish this using a where clause.
 
-bars_online_url_deletion_url <- "https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Bars%20in%20Zurich/FeatureServer/0"
+bars_online_url_deletion_url <- "https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Bars%20in%20Zurich%20test2/FeatureServer/0"
 bars_online_deletion <- arc_open(bars_online_url_deletion_url)
 bars_online_deleted <- delete_features(bars_online_deletion, where = "object_id < 100")
 bars_online_deleted # See which are deleted, also check in AGOL if layer did really refresh and deletion is complete.
