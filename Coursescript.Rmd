@@ -39,7 +39,8 @@ packages_checker(
     #'GGally',
     'tidyverse',
     'rmarkdown',
-    'knitr'
+    'knitr',
+    'jsonlite' # for data of city of zurich
     #'cli' # last week something didnt work with progress bars
     ))
 
@@ -162,6 +163,16 @@ survey_fl <- arc_open(survey_url) # token needed if not public layer
 # Read in as SF object
 survey_sf <- arc_select(survey_fl)
 
+ggplot(data = survey_sf) +
+  geom_sf(aes(color = is_dei_diversity_equity_and_inc)) +
+  labs(
+    title = "Survey123 Dataset Categorized by Diversity, Equity, and Inclusion",
+    color = "DEI Indicator",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal()
+
 # # Its also possible to read in imagery services
 # url <- "https://tiledimageservices9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Z%C3%BCrich_Swissimage_Test_RBridge/ImageServer"
 # worldimagery_esrimap_url_img <- arc_open(url,token = token)
@@ -194,11 +205,9 @@ print("will come soon")
 #### Demo - Using ArcGIS Services
 
 ```{r geocode, echo=TRUE, eval=FALSE}
-# Geocoding = words --> Location, reverse geocoding = location --> words
 ###########################################
 # Read in "Take aways" prepared by me in ArcGIS Online
 takeaways_url <- "https://services9.arcgis.com/Va7wxtFE2VgOj6pj/arcgis/rest/services/Just_eat_restaurants_in_Zurich/FeatureServer/0"
-
 # Read in as a reference layer
 takeaways_fl <- arc_open(takeaways_url)
 
@@ -206,10 +215,12 @@ takeaways_fl <- arc_open(takeaways_url)
 takeaways_sf <- arc_select(takeaways_fl)
 
 ###########################################
+
+# Geocoding = words --> Location, reverse geocoding = location --> words
 # Read bars API from the City of Zurich
 # Load JSON data from the URL
 url <- "https://www.zuerich.com/en/api/v2/data?id=103"
-json_data <- fromJSON(url, flatten = TRUE)
+json_data <- jsonlite::fromJSON(url, flatten = TRUE)
 
 # Convert JSON to a dataframe
 bars_df <- as.data.frame(json_data)
@@ -277,7 +288,9 @@ bars_df <- bars_df %>%
   mutate(
     geocoordinates_latitude = ifelse(is.na(geocoordinates_latitude), latitude, geocoordinates_latitude),
     geocoordinates_longitude = ifelse(is.na(geocoordinates_longitude), longitude, geocoordinates_longitude)
-  ) %>%
+  )
+
+bars_df <- bars_df %>% 
   select(-latitude, -longitude)
 
 # Convert to sf object
